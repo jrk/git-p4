@@ -224,15 +224,15 @@ def p4CmdList(cmd, stdin=None, stdin_mode='w+b'):
     result = []
     try:
         while True:
+            #print cmd
             entry = marshal.load(p4.stdout)
+            #print entry
             result.append(entry)
     except EOFError:
         pass
     except:
 	print 'FUCK:'
-	print result
-	print p4.stdout
-	print p4
+	#print p4.stdout.read()
 	print cmd
 	pdb.set_trace()
 	sys.exit(1)
@@ -979,10 +979,11 @@ class P4Sync(Command):
 
         filedata = []
         if len(filesToRead) > 0:
-            filedata = p4CmdList('-x - print',
-                                 stdin='\n'.join(['%s#%s' % (f['path'], f['rev'])
-                                                  for f in filesToRead]),
+            for f in filesToRead:
+                fd = p4CmdList('-x - print',
+                                 stdin='\n'.join(['%s#%s' % (f['path'], f['rev'])]),
                                  stdin_mode='w+')
+                filedata.extend(fd)
 
             if "p4ExitCode" in filedata[0]:
                 die("Problems executing p4. Error: [%d]."
@@ -1026,13 +1027,6 @@ class P4Sync(Command):
 
         # start with reading files; if that fails, we should not
         # create a commit.
-        new_files = []
-        for f in files:
-            if [p for p in branchPrefixes if f['path'].startswith(p)]:
-                new_files.append (f)
-            else:
-                sys.stderr.write("Ignoring file outside of prefix: %s\n" % path)
-        files = self.readP4Files(new_files)
 
         self.gitStream.write("commit %s\n" % branch)
 #        gitStream.write("mark :%s\n" % details["change"])
@@ -1060,33 +1054,44 @@ class P4Sync(Command):
                 print "parent %s" % parent
             self.gitStream.write("from %s\n" % parent)
 
-        for file in files:
-            if file["type"] == "apple":
-                print "\nfile %s is a strange apple file that forks. Ignoring!" % file['path']
-                continue
-
-            relPath = self.stripRepoPath(file['path'], branchPrefixes)
-            if file["action"] in ("delete", "purge"):
-                self.gitStream.write("D %s\n" % relPath)
+        new_files = []
+        for f in files:
+            if [p for p in branchPrefixes if f['path'].startswith(p)]:
+                new_files.append (f)
             else:
-                data = file['data']
+                sys.stderr.write("Ignoring file outside of prefix: %s\n" % path)
+        #jrkBatchSize = 10
+        for new_files_batch_num in range(len(new_files)): #/jrkBatchSize + 1
+            new_files_batch = [new_files[new_files_batch_num]]
+            files = self.readP4Files(new_files_batch)
+            
+            for file in files:
+                if file["type"] == "apple":
+                    print "\nfile %s is a strange apple file that forks. Ignoring!" % file['path']
+                    continue
 
-                mode = "644"
-                if isP4Exec(file["type"]):
-                    mode = "755"
-                elif file["type"] == "symlink":
-                    mode = "120000"
-                    # p4 print on a symlink contains "target\n", so strip it off
-                    data = data[:-1]
+                relPath = self.stripRepoPath(file['path'], branchPrefixes)
+                if file["action"] in ("delete", "purge"):
+                    self.gitStream.write("D %s\n" % relPath)
+                else:
+                    data = file['data']
 
-                if self.isWindows and file["type"].endswith("text"):
-                    data = data.replace("\r\n", "\n")
+                    mode = "644"
+                    if isP4Exec(file["type"]):
+                        mode = "755"
+                    elif file["type"] == "symlink":
+                        mode = "120000"
+                        # p4 print on a symlink contains "target\n", so strip it off
+                        data = data[:-1]
 
-                self.gitStream.write("M %s inline %s\n" % (mode, relPath))
-                self.gitStream.write("data %s\n" % len(data))
-                self.gitStream.write(data)
-                self.gitStream.write("\n")
+                    if self.isWindows and file["type"].endswith("text"):
+                        data = data.replace("\r\n", "\n")
 
+                    self.gitStream.write("M %s inline %s\n" % (mode, relPath))
+                    self.gitStream.write("data %s\n" % len(data))
+                    self.gitStream.write(data)
+                    self.gitStream.write("\n")
+        
         self.gitStream.write("\n")
 
         change = int(details["change"])
