@@ -644,7 +644,7 @@ class P4FileReader:
                 self.filesForCommit.append(f)
                 self.pathMap[f['path']] = f
                 if f['action'] not in ('delete', 'purge'):
-                    self.filesToRead.append(f)
+      	            self.filesToRead.append(f)
 
     def printStatus(self, filename):
         if filename == self.LastFile and self.Bytes - self.LastBytes < 100*1024: return
@@ -682,7 +682,7 @@ class P4FileReader:
                 try:
                     header = self.reader.next()
                 except StopIteration:    
-                    print "" # newline for status information
+                    print "stopiterationraised" # newline for status information
                     raise
 
             # now we have the header record.
@@ -1280,6 +1280,32 @@ class P4Sync(Command):
                 self.gitStream.write("data %s\n" % len(data))
                 self.gitStream.write(data)
                 self.gitStream.write("\n")
+
+        for f in new_files:
+            includeFile = False
+            excludeFile = False
+            relPath = self.stripRepoPath(f['path'], branchPrefixes)
+            if len(self.clientSpecDirs):
+                for val in self.clientSpecDirs:
+                    if f['path'].startswith(val[0]):
+                        if val[1] > 0:
+                            includeFile = True
+                        else:
+                            excludeFile = True
+            else:
+                includeFile = True
+
+            if includeFile and not excludeFile:
+                if f['action'] in ('delete', 'purge'):
+                    self.gitStream.write("D %s\n" % relPath)
+
+
+
+
+
+
+
+
 
         self.gitStream.write("\n")
 
