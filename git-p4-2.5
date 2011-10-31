@@ -19,7 +19,7 @@ verbose = False
 
 class LargeFileWriter:
     """Wrapper for a file, to get around a windows bug when writing large amounts of data.
-    
+
     When writing to the wrapped file object, writes are broken up so that only 10MB are written at
     a time. Otherwise, there is IO exception on Windows.
     """
@@ -37,7 +37,7 @@ class LargeFileWriter:
             self.filedesc.flush()
             bytes = bytes[chunk:]
 
-        if len(bytes):    
+        if len(bytes):
             self.filedesc.write(bytes[:chunk])
             self.filedesc.flush()
 
@@ -247,7 +247,7 @@ class P4CmdReader:
         except EOFError:
             raise StopIteration
 
-def p4CmdListOpen(cmd, stdin=None, stdin_mode='w+b'):    
+def p4CmdListOpen(cmd, stdin=None, stdin_mode='w+b'):
     cmd = p4_build_cmd("-G %s" % (cmd))
     if verbose:
         sys.stderr.write("Opening pipe: %s\n" % cmd)
@@ -265,7 +265,7 @@ def p4CmdListOpen(cmd, stdin=None, stdin_mode='w+b'):
     return subprocess.Popen(cmd, shell=True,
                           stdin=stdin_file,
                           stdout=subprocess.PIPE)
-                          
+
 
 def p4CmdList(cmd, stdin=None, stdin_mode='w+b'):
 
@@ -623,7 +623,7 @@ class P4FileReader:
                                               for f in self.filesToRead]) )
 
         # leftover record from previous time next() was called.
-        self.leftover = None                                      
+        self.leftover = None
 
     def filterClientSpec( self, files, clientSpecDirs ):
         # sets filesForCommit and filesToRead, filtered according to the client spec.
@@ -663,7 +663,7 @@ class P4FileReader:
         return self
 
     def next(self):
-        # Return a record containing a file to commit. 
+        # Return a record containing a file to commit.
         #
         # Perforce outputs a number of records for each file. The first one
         # contains basic information such as the change list and filename. This
@@ -678,10 +678,10 @@ class P4FileReader:
             if self.leftover:
                 header = self.leftover
                 self.leftover = None
-            else:    
+            else:
                 try:
                     header = self.reader.next()
-                except StopIteration:    
+                except StopIteration:
                     print "" # newline for status information
                     raise
 
@@ -692,7 +692,7 @@ class P4FileReader:
             self.printStatus(header['depotFile'])
 
             for record in self.reader:
-                if record['code'] in ( 'text', 'unicode', 'binary' ):   
+                if record['code'] in ( 'text', 'unicode', 'binary' ):
                     # encountered subsequent data chunk. Append to file data.
                     textBuffer.write( record['data'] )
                     self.Bytes += len(record['data'])
@@ -723,7 +723,7 @@ class P4FileReader:
                 # perforce gave us something we didn't ask for?
                 print "Bad path: %s" % filePath
                 continue
-            
+
 
 class P4Submit(Command):
     def __init__(self):
